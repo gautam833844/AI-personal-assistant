@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Personal Assistant",
+    "slug": "personal-assistant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f8fafc"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
