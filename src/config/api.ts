@@ -7,6 +7,6 @@ import { Platform } from 'react-native';
  * across physical Android/iOS devices, simulators, and web.
  */
 export const API_CONFIG = {
-  BASE_URL: 'https://read-vitamins-nam-lamp.trycloudflare.com',
+  BASE_URL: 'https://graph-excluding-answer-poet.trycloudflare.com',
   TIMEOUT_MS: 10000,
 };
