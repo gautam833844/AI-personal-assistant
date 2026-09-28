@@ -6,6 +6,8 @@ export interface ScheduleEvent {
   time: string;
   location: string;
   type: EventType;
+  day?: string;
+  days?: string[];
 }
 
 export interface DayItem {

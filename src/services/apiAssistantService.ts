@@ -147,6 +147,8 @@ export async function sendAssistantMessage(
           time: s.time,
           location: s.location,
           type: s.type,
+          day: s.day,
+          days: s.days,
         })),
       },
     };
