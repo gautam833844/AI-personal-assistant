@@ -400,7 +400,10 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
   };
 
   // Render Read-Only Data Cards inside message bubble
-  const renderReadonlyData = (action: string) => {
+  const renderReadonlyData = (
+    action: string,
+    payload?: Record<string, any>
+  ) => {
     if (action === 'show_next_class') {
       const nextClass = SAMPLE_EVENTS.find((e) => e.type === 'class') || SAMPLE_EVENTS[0];
       if (!nextClass) return null;
@@ -522,9 +525,30 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
     }
 
     if (action === 'show_schedule' || action === 'get_schedule' || action === 'show_tomorrow') {
+      const rawDay = (payload?.day as string | undefined)?.trim();
+      const targetDay = rawDay ? rawDay.toLowerCase() : undefined;
+
+      const eventsForDisplay = targetDay
+        ? SAMPLE_EVENTS.filter(
+            (e) =>
+              e.days?.some((d) => d.toLowerCase() === targetDay) ||
+              e.day?.toLowerCase() === targetDay
+          )
+        : SAMPLE_EVENTS;
+
+      if (eventsForDisplay.length === 0) {
+        return (
+          <View style={styles.dataPreviewBox}>
+            <Text style={styles.dataEmptyText}>
+              No classes or events scheduled for {rawDay || 'this day'}.
+            </Text>
+          </View>
+        );
+      }
+
       return (
         <View style={styles.dataPreviewBox}>
-          {SAMPLE_EVENTS.map((event) => (
+          {eventsForDisplay.map((event) => (
             <View key={event.id} style={styles.dataItemRow}>
               <BookOpen size={14} color={COLORS.textAccent} />
               <Text style={styles.dataItemText} numberOfLines={1}>
@@ -701,7 +725,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({
                 {!isUser &&
                   actionResult &&
                   !requiresConfirmation &&
-                  renderReadonlyData(actionResult.action)}
+                  renderReadonlyData(actionResult.action, actionResult.payload)}
 
                 <Text
                   style={[

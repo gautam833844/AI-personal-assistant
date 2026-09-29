@@ -1,7 +1,20 @@
 import asyncio
 import json
 import logging
-from typing import List, Optional
+import sys
+import types
+from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
+
+# Ensure compatibility on Windows platforms where jiter binary DLL may be restricted by security policies
+try:
+    import jiter
+except ImportError:
+    jiter_shim = types.ModuleType("jiter")
+    jiter_shim.from_json = lambda b, **kwargs: json.loads(b.decode("utf-8") if isinstance(b, (bytes, bytearray)) else b)
+    jiter_shim.cache_clear = lambda: None
+    sys.modules["jiter"] = jiter_shim
+
 from openai import AsyncOpenAI
 from ..config import settings
 from ..models.chat import ChatMessage, UserContext, ChatResponse, ParsedToolCall
@@ -9,6 +22,83 @@ from ..schemas.tools import NVIDIA_TOOLS
 from .prompt_builder import build_system_prompt
 
 logger = logging.getLogger(__name__)
+
+READ_ONLY_SCHEDULE_TOOLS = {"get_schedule", "show_schedule", "show_next_class", "show_tomorrow"}
+
+def resolve_schedule_query(
+    day_arg: Optional[str],
+    schedule: Optional[List[Dict[str, Any]]] = None,
+    now: Optional[datetime] = None
+) -> str:
+    """
+    Authoritatively resolve schedule queries from the user context without hallucination.
+    """
+    if now is None:
+        now = datetime.now()
+
+    day_lower = (day_arg or "today").strip().lower()
+    days_map = {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+    }
+
+    if day_lower == "today":
+        target_day = now.strftime("%A")
+    elif day_lower == "tomorrow":
+        target_day = (now + timedelta(days=1)).strftime("%A")
+    elif day_lower in days_map:
+        target_day = days_map[day_lower]
+    else:
+        matched_day = None
+        for d_key, d_val in days_map.items():
+            if d_key in day_lower:
+                matched_day = d_val
+                break
+        target_day = matched_day or now.strftime("%A")
+
+    events = schedule or []
+    matched_events = []
+    for ev in events:
+        ev_days = [str(d).lower() for d in (ev.get("days") or ([ev.get("day")] if ev.get("day") else []))]
+        if target_day.lower() in ev_days:
+            title = ev.get("title", "Event")
+            time_str = ev.get("time", "")
+            loc = ev.get("location", "")
+            etype = ev.get("type", "class")
+            desc = f"{title} ({etype}) at {time_str}" + (f" in {loc}" if loc else "")
+            matched_events.append((ev, desc))
+
+    if not matched_events:
+        return f"No classes or events scheduled for {target_day}."
+
+    if day_lower in ("today", "now") or target_day == now.strftime("%A"):
+        upcoming = []
+        past = []
+        for ev, desc in matched_events:
+            time_str = ev.get("time", "")
+            try:
+                ev_dt = datetime.strptime(time_str.strip(), "%I:%M %p").replace(
+                    year=now.year, month=now.month, day=now.day
+                )
+                if ev_dt < now:
+                    past.append(desc)
+                else:
+                    upcoming.append(desc)
+            except Exception:
+                upcoming.append(desc)
+        details = []
+        if upcoming:
+            details.append("Upcoming: " + "; ".join(upcoming))
+        if past:
+            details.append("Already passed today: " + "; ".join(past))
+        return f"Schedule for {target_day} (Current time: {now.strftime('%I:%M %p')}): " + " | ".join(details)
+
+    return f"Schedule for {target_day}: " + "; ".join(desc for _, desc in matched_events)
 
 class NvidiaNimService:
     def __init__(self):
@@ -102,9 +192,76 @@ class NvidiaNimService:
                             )
                         )
 
+                # Check for read-only schedule tool calls
+                schedule_tool_calls = [
+                    tc for tc in (message.tool_calls or [])
+                    if tc.function.name in READ_ONLY_SCHEDULE_TOOLS
+                ]
+
+                if schedule_tool_calls:
+                    follow_messages = list(api_messages)
+                    follow_messages.append({
+                        "role": "assistant",
+                        "content": message.content,
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                }
+                            }
+                            for tc in message.tool_calls
+                        ]
+                    })
+
+                    tool_result = ""
+                    for tc in schedule_tool_calls:
+                        try:
+                            fn_args = json.loads(tc.function.arguments)
+                        except Exception:
+                            fn_args = {}
+                        day_val = fn_args.get("day") or "today"
+                        schedule_data = user_context.schedule if user_context else []
+                        tool_result = resolve_schedule_query(day_val, schedule_data)
+                        follow_messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "name": tc.function.name,
+                            "content": tool_result
+                        })
+
+                    # Second turn completion to get natural language synthesis
+                    try:
+                        second_response = await asyncio.wait_for(
+                            self.client.chat.completions.create(
+                                model=model_name,
+                                messages=follow_messages,
+                                temperature=0.2,
+                                max_tokens=1024,
+                            ),
+                            timeout=settings.MODEL_TIMEOUT_SECONDS
+                        )
+                        second_msg = second_response.choices[0].message
+                        if second_msg.content and second_msg.content.strip():
+                            content = second_msg.content.strip()
+                        else:
+                            content = tool_result
+                    except Exception as err:
+                        logger.warning(f"Second turn completion for schedule tool failed: {err}")
+                        content = tool_result
+
+                    # Filter out resolved read-only schedule tools from parsed_tools
+                    parsed_tools = [
+                        t for t in parsed_tools if t.name not in READ_ONLY_SCHEDULE_TOOLS
+                    ]
+
                 if not content and parsed_tools:
-                    tool_names = ", ".join(t.name.replace("_", " ") for t in parsed_tools)
-                    content = f"I've prepared the following action for you: {tool_names}."
+                    mutating_tools = [t for t in parsed_tools if t.name not in READ_ONLY_SCHEDULE_TOOLS]
+                    if mutating_tools:
+                        tool_names = ", ".join(t.name.replace("_", " ") for t in mutating_tools)
+                        content = f"I've prepared the following action for you: {tool_names}."
 
                 fallback_occurred = len(attempted_models) > 1
                 if fallback_occurred:
@@ -140,3 +297,4 @@ class NvidiaNimService:
         raise RuntimeError(f"All candidate models in multi-model pool failed. Attempted: {attempted_models}. Last error: {last_error}")
 
 nvidia_service = NvidiaNimService()
+

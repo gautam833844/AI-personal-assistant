@@ -91,6 +91,13 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function extractWeekday(text: string): string | undefined {
+  const match = text.match(
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i
+  );
+  return match ? capitalize(match[1]) : undefined;
+}
+
 /**
  * Match a target item in an array by substring / word overlap
  */
@@ -222,22 +229,40 @@ export function parseCommand(rawInput: string, context?: ParserContext): Command
     };
   }
 
-  // Day-specific Schedule & Classes (e.g. "What are the classes schedule for Monday", "What are my classes on Monday", "Show Monday's schedule")
-  const dayClassMatch =
-    lower.match(
-      /(?:what\s+(?:are\s+(?:the|my)|classes\s+do\s+i\s+have|is\s+my|is\s+the)\s+(?:classes\s+schedule|classes|schedule)|show\s+(?:me\s+)?(?:my\s+)?(?:classes|schedule)|view\s+(?:classes|schedule))\s+(?:for|on)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i
-    ) ||
-    lower.match(
-      /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)('?s)?\s+(?:classes\s+schedule|classes|schedule)/i
-    ) ||
-    lower.match(
-      /(?:classes|schedule)\s+(?:for|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i
+  // Day-specific Schedule & Classes (e.g. "Do I have any classes on Sunday", "What classes do I have on Monday", "Show Monday's schedule")
+  const targetDay = extractWeekday(lower);
+  const daySchedulePatterns = [
+    /(?:do\s+i\s+have\s+(?:any\s+)?(?:classes|class|anything(?:\s+scheduled)?)|what\s+(?:classes|class|schedule)?\s*do\s+i\s+have|what\s+do\s+i\s+have)\s+(?:for|on)\s+/i,
+    /(?:what(?:'s|\s+is|\s+are)\s+(?:my|the)?\s*(?:classes|class|schedule)|show\s+(?:me\s+)?(?:my\s+)?(?:classes|class|schedule)|view\s+(?:classes|class|schedule))\s+(?:for|on)\s+/i,
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)('?s)?\s+(?:classes|class|schedule)\b/i,
+    /(?:classes|class|schedule)\s+(?:for|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    /(?:anything\s+scheduled|do\s+i\s+have\s+anything|what\s+do\s+i\s+have)\s+(?:for|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+  ];
+
+  const isDayScheduleQuery = Boolean(
+    targetDay && daySchedulePatterns.some((pattern) => pattern.test(lower))
+  );
+
+  if (isDayScheduleQuery && targetDay) {
+    const day = targetDay;
+    const dayLower = day.toLowerCase();
+    const classes = SAMPLE_EVENTS.filter(
+      (e) =>
+        e.type === 'class' &&
+        (e.days?.some((d) => d.toLowerCase() === dayLower) ||
+          e.day?.toLowerCase() === dayLower)
     );
 
-  if (dayClassMatch) {
-    const rawDay = dayClassMatch[1] || dayClassMatch[3] || 'Monday';
-    const day = capitalize(rawDay);
-    const classes = SAMPLE_EVENTS.filter((e) => e.type === 'class');
+    if (classes.length === 0) {
+      return {
+        action: 'get_schedule',
+        confidence: 0.98,
+        payload: { day },
+        response: `You have no classes scheduled for **${day}**.`,
+        requiresConfirmation: false,
+      };
+    }
+
     const classLines = classes
       .map((c) => `• **${c.title}** at ${c.time} (${c.location})`)
       .join('\n');
