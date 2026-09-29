@@ -4,6 +4,8 @@ export interface ScheduleEvent {
   id: string;
   title: string;
   time: string;
+  endTime?: string;
+  durationMinutes?: number;
   location: string;
   type: EventType;
   day?: string;

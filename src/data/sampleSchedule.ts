@@ -18,6 +18,8 @@ export const SAMPLE_EVENTS: ScheduleEvent[] = [
   {
     id: '1',
     time: '09:00 AM',
+    endTime: '10:00 AM',
+    durationMinutes: 60,
     title: 'Machine Learning',
     location: 'Room 204',
     type: 'class',
@@ -27,6 +29,8 @@ export const SAMPLE_EVENTS: ScheduleEvent[] = [
   {
     id: '2',
     time: '11:00 AM',
+    endTime: '12:00 PM',
+    durationMinutes: 60,
     title: 'Natural Language Processing',
     location: 'Room 301',
     type: 'class',
@@ -36,6 +40,8 @@ export const SAMPLE_EVENTS: ScheduleEvent[] = [
   {
     id: '3',
     time: '02:00 PM',
+    endTime: '03:00 PM',
+    durationMinutes: 60,
     title: 'Database Systems',
     location: 'Room 105',
     type: 'class',
@@ -45,6 +51,8 @@ export const SAMPLE_EVENTS: ScheduleEvent[] = [
   {
     id: '4',
     time: '04:00 PM',
+    endTime: '05:00 PM',
+    durationMinutes: 60,
     title: 'NLP Quiz',
     location: 'Room 204',
     type: 'quiz',
