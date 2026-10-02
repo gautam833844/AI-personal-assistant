@@ -12,6 +12,7 @@ import { DateSelector } from '../components/DateSelector';
 import { TimelineEventCard } from '../components/TimelineEventCard';
 import { SAMPLE_DAYS, SAMPLE_EVENTS } from '../data/sampleSchedule';
 import { DayItem } from '../types/schedule';
+import { getEventsForDay } from '../services/scheduleService';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 
 export const ScheduleScreen: React.FC = () => {
@@ -25,6 +26,12 @@ export const ScheduleScreen: React.FC = () => {
       'Event creation placeholder. Real scheduling functionality will be added in upcoming steps.'
     );
   };
+
+  const weekdayName = selectedDay.fullDate.split(',')[0].trim();
+  const displayedEvents = getEventsForDay(weekdayName, SAMPLE_EVENTS);
+  const sectionTitle = selectedDay.isToday
+    ? "TODAY'S SCHEDULE"
+    : `${weekdayName.toUpperCase()}'S SCHEDULE`;
 
   return (
     <View style={styles.container}>
@@ -48,16 +55,24 @@ export const ScheduleScreen: React.FC = () => {
 
         {/* 3. Timeline Schedule Section */}
         <View style={styles.scheduleSection}>
-          <Text style={styles.sectionTitle}>TODAY'S SCHEDULE</Text>
-          <View style={styles.timelineList}>
-            {SAMPLE_EVENTS.map((event, index) => (
-              <TimelineEventCard
-                key={event.id}
-                event={event}
-                isLast={index === SAMPLE_EVENTS.length - 1}
-              />
-            ))}
-          </View>
+          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+          {displayedEvents.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                {`No classes or events scheduled for ${weekdayName}`}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.timelineList}>
+              {displayedEvents.map((event, index) => (
+                <TimelineEventCard
+                  key={event.id}
+                  event={event}
+                  isLast={index === displayedEvents.length - 1}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -117,6 +132,22 @@ const styles = StyleSheet.create({
   },
   timelineList: {
     paddingTop: SPACING.xs,
+  },
+  emptyCard: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.xs,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textTertiary,
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',
