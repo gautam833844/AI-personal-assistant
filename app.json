@@ -9,6 +9,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.personalassistant.atlas",
       "adaptiveIcon": {
         "backgroundColor": "#f8fafc"
       }

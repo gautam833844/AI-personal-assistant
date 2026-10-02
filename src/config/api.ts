@@ -1,12 +1,13 @@
-import { Platform } from 'react-native';
-
 /**
  * Backend API Configuration
  * 
- * Configured with Cloudflare Tunnel URL for reliable cross-network connectivity
- * across physical Android/iOS devices, simulators, and web.
+ * Configured with persistent production endpoint support.
+ * Can be overridden at build or runtime via the EXPO_PUBLIC_API_URL environment variable
+ * (e.g. EXPO_PUBLIC_API_URL=https://your-backend.onrender.com).
  */
+const PRODUCTION_BACKEND_URL = 'https://personal-assistant-api.onrender.com';
+
 export const API_CONFIG = {
-  BASE_URL: 'https://contained-beverage-concerned-rep.trycloudflare.com',
+  BASE_URL: process.env.EXPO_PUBLIC_API_URL || PRODUCTION_BACKEND_URL,
   TIMEOUT_MS: 10000,
 };
