@@ -20,85 +20,33 @@ from ..config import settings
 from ..models.chat import ChatMessage, UserContext, ChatResponse, ParsedToolCall
 from ..schemas.tools import NVIDIA_TOOLS
 from .prompt_builder import build_system_prompt
+from .schedule_engine import resolve_schedule
 
 logger = logging.getLogger(__name__)
 
 READ_ONLY_SCHEDULE_TOOLS = {"get_schedule", "show_schedule", "show_next_class", "show_tomorrow"}
 
 def resolve_schedule_query(
-    day_arg: Optional[str],
+    day_arg: Optional[str] = "today",
     schedule: Optional[List[Dict[str, Any]]] = None,
+    time_of_day: Optional[str] = None,
+    after_time: Optional[str] = None,
+    before_time: Optional[str] = None,
+    query_type: str = "events",
     now: Optional[datetime] = None
-) -> str:
+) -> Dict[str, Any]:
     """
-    Authoritatively resolve schedule queries from the user context without hallucination.
+    Authoritatively resolve schedule queries using the deterministic Schedule Engine.
     """
-    if now is None:
-        now = datetime.now()
-
-    day_lower = (day_arg or "today").strip().lower()
-    days_map = {
-        "monday": "Monday",
-        "tuesday": "Tuesday",
-        "wednesday": "Wednesday",
-        "thursday": "Thursday",
-        "friday": "Friday",
-        "saturday": "Saturday",
-        "sunday": "Sunday"
-    }
-
-    if day_lower == "today":
-        target_day = now.strftime("%A")
-    elif day_lower == "tomorrow":
-        target_day = (now + timedelta(days=1)).strftime("%A")
-    elif day_lower in days_map:
-        target_day = days_map[day_lower]
-    else:
-        matched_day = None
-        for d_key, d_val in days_map.items():
-            if d_key in day_lower:
-                matched_day = d_val
-                break
-        target_day = matched_day or now.strftime("%A")
-
-    events = schedule or []
-    matched_events = []
-    for ev in events:
-        ev_days = [str(d).lower() for d in (ev.get("days") or ([ev.get("day")] if ev.get("day") else []))]
-        if target_day.lower() in ev_days:
-            title = ev.get("title", "Event")
-            time_str = ev.get("time", "")
-            loc = ev.get("location", "")
-            etype = ev.get("type", "class")
-            desc = f"{title} ({etype}) at {time_str}" + (f" in {loc}" if loc else "")
-            matched_events.append((ev, desc))
-
-    if not matched_events:
-        return f"No classes or events scheduled for {target_day}."
-
-    if day_lower in ("today", "now") or target_day == now.strftime("%A"):
-        upcoming = []
-        past = []
-        for ev, desc in matched_events:
-            time_str = ev.get("time", "")
-            try:
-                ev_dt = datetime.strptime(time_str.strip(), "%I:%M %p").replace(
-                    year=now.year, month=now.month, day=now.day
-                )
-                if ev_dt < now:
-                    past.append(desc)
-                else:
-                    upcoming.append(desc)
-            except Exception:
-                upcoming.append(desc)
-        details = []
-        if upcoming:
-            details.append("Upcoming: " + "; ".join(upcoming))
-        if past:
-            details.append("Already passed today: " + "; ".join(past))
-        return f"Schedule for {target_day} (Current time: {now.strftime('%I:%M %p')}): " + " | ".join(details)
-
-    return f"Schedule for {target_day}: " + "; ".join(desc for _, desc in matched_events)
+    return resolve_schedule(
+        schedule=schedule or [],
+        day=day_arg or "today",
+        time_of_day=time_of_day,
+        after_time=after_time,
+        before_time=before_time,
+        query_type=query_type,
+        now=now or datetime.now()
+    )
 
 class NvidiaNimService:
     def __init__(self):
@@ -216,20 +164,37 @@ class NvidiaNimService:
                         ]
                     })
 
-                    tool_result = ""
+                    tool_result_json = ""
+                    fallback_summary = ""
                     for tc in schedule_tool_calls:
                         try:
                             fn_args = json.loads(tc.function.arguments)
                         except Exception:
                             fn_args = {}
                         day_val = fn_args.get("day") or "today"
+                        time_of_day_val = fn_args.get("time_of_day")
+                        after_time_val = fn_args.get("after_time")
+                        before_time_val = fn_args.get("before_time")
+                        query_type_val = fn_args.get("query_type") or "events"
+
                         schedule_data = user_context.schedule if user_context else []
-                        tool_result = resolve_schedule_query(day_val, schedule_data)
+                        engine_result = resolve_schedule(
+                            schedule=schedule_data,
+                            day=day_val,
+                            time_of_day=time_of_day_val,
+                            after_time=after_time_val,
+                            before_time=before_time_val,
+                            query_type=query_type_val,
+                            now=datetime.now()
+                        )
+                        fallback_summary = engine_result.get("summaryText", "")
+                        tool_result_json = json.dumps(engine_result, indent=2)
+
                         follow_messages.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
                             "name": tc.function.name,
-                            "content": tool_result
+                            "content": tool_result_json
                         })
 
                     # Second turn completion to get natural language synthesis
@@ -247,10 +212,10 @@ class NvidiaNimService:
                         if second_msg.content and second_msg.content.strip():
                             content = second_msg.content.strip()
                         else:
-                            content = tool_result
+                            content = fallback_summary or tool_result_json
                     except Exception as err:
                         logger.warning(f"Second turn completion for schedule tool failed: {err}")
-                        content = tool_result
+                        content = fallback_summary or tool_result_json
 
                     # Filter out resolved read-only schedule tools from parsed_tools
                     parsed_tools = [

@@ -145,6 +145,8 @@ export async function sendAssistantMessage(
           id: s.id,
           title: s.title,
           time: s.time,
+          endTime: s.endTime,
+          durationMinutes: s.durationMinutes,
           location: s.location,
           type: s.type,
           day: s.day,

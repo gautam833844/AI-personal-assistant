@@ -391,7 +391,14 @@ NVIDIA_TOOLS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_schedule",
-            "description": "Retrieve the class, exam, or event schedule for a specific day such as Monday, Tuesday, today, or tomorrow.",
+            "description": (
+                "Authoritative schedule and availability query engine. Invoke this tool whenever the user asks "
+                "about their schedule, classes, timetable, free time, availability, busy status, back-to-back classes, "
+                "upcoming events, or what they have at or after a specific time (e.g. 'What classes do I have Monday?', "
+                "'Am I free Monday afternoon?', 'Is Wednesday busy?', 'Do I have anything after 2 PM?', "
+                "'When am I free tomorrow?', 'Do I have college this weekend?', 'What's the next thing I have?', "
+                "'How much free time do I have today?')."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -400,6 +407,7 @@ NVIDIA_TOOLS: List[Dict[str, Any]] = [
                         "enum": [
                             "today",
                             "tomorrow",
+                            "weekend",
                             "Monday",
                             "Tuesday",
                             "Wednesday",
@@ -415,7 +423,25 @@ NVIDIA_TOOLS: List[Dict[str, Any]] = [
                             "saturday",
                             "sunday"
                         ],
-                        "description": "Day of the week or relative day to inspect (e.g. 'Monday', 'Tuesday', 'today', 'tomorrow')"
+                        "description": "Day of the week or period to inspect ('today', 'tomorrow', 'weekend', 'Monday', 'Tuesday', etc.). Default is 'today'."
+                    },
+                    "time_of_day": {
+                        "type": "string",
+                        "enum": ["morning", "afternoon", "evening"],
+                        "description": "Optional time slot filter: 'morning' (08:00 AM–12:00 PM), 'afternoon' (12:00 PM–05:00 PM), or 'evening' (05:00 PM–09:00 PM)."
+                    },
+                    "after_time": {
+                        "type": "string",
+                        "description": "Optional cutoff time to find events starting at/after or active after this time (e.g. '02:00 PM', '14:00', '3 PM')."
+                    },
+                    "before_time": {
+                        "type": "string",
+                        "description": "Optional cutoff time to find events starting before this time (e.g. '12:00 PM', '11:00 AM')."
+                    },
+                    "query_type": {
+                        "type": "string",
+                        "enum": ["events", "free_time", "next_event", "busy_summary", "availability"],
+                        "description": "The specific intent of the query: 'events' (list classes), 'free_time' (calculate open windows/gaps), 'next_event' (find next upcoming class), 'busy_summary' (check if packed/busy), 'availability' (check if free in a given slot)."
                     }
                 }
             }
