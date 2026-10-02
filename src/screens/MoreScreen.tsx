@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import {
   FileText,
@@ -20,21 +19,15 @@ interface MoreScreenProps {
   onNavigateToNotes: () => void;
   onNavigateToReminders: () => void;
   onNavigateToProfile: () => void;
+  onNavigateToSettings: () => void;
 }
 
 export const MoreScreen: React.FC<MoreScreenProps> = ({
   onNavigateToNotes,
   onNavigateToReminders,
   onNavigateToProfile,
+  onNavigateToSettings,
 }) => {
-  const handlePlaceholderPress = (title: string) => {
-    Alert.alert(
-      title,
-      `${title} will be configured in future steps.`,
-      [{ text: 'OK' }]
-    );
-  };
-
   const menuOptions = [
     {
       id: 'notes',
@@ -70,7 +63,7 @@ export const MoreScreen: React.FC<MoreScreenProps> = ({
       icon: Settings,
       iconColor: COLORS.textSecondary,
       iconBg: COLORS.cardSubtle,
-      onPress: () => handlePlaceholderPress('Settings'),
+      onPress: onNavigateToSettings,
     },
   ];
 

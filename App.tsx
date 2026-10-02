@@ -10,6 +10,7 @@ import { MoreScreen } from './src/screens/MoreScreen';
 import { NotesScreen } from './src/screens/NotesScreen';
 import { RemindersScreen } from './src/screens/RemindersScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 import { AssistantScreen } from './src/screens/AssistantScreen';
 import { BottomNavigation, type NavTab } from './src/components/BottomNavigation';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -35,7 +36,7 @@ import { COLORS, SPACING } from './src/constants/theme';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
-  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'notes' | 'reminders' | 'profile'>('menu');
+  const [moreSubScreen, setMoreSubScreen] = useState<'menu' | 'notes' | 'reminders' | 'profile' | 'settings'>('menu');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantInitialQuery, setAssistantInitialQuery] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -428,11 +429,21 @@ export default function App() {
             />
           );
         }
+        if (moreSubScreen === 'settings') {
+          return (
+            <SettingsScreen
+              profile={profile}
+              onBack={() => setMoreSubScreen('menu')}
+              onSaveProfile={handleSaveProfile}
+            />
+          );
+        }
         return (
           <MoreScreen
             onNavigateToNotes={() => setMoreSubScreen('notes')}
             onNavigateToReminders={() => setMoreSubScreen('reminders')}
             onNavigateToProfile={() => setMoreSubScreen('profile')}
+            onNavigateToSettings={() => setMoreSubScreen('settings')}
           />
         );
       case 'home':
