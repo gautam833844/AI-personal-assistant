@@ -7,6 +7,6 @@ import { Platform } from 'react-native';
  * across physical Android/iOS devices, simulators, and web.
  */
 export const API_CONFIG = {
-  BASE_URL: 'https://consulting-difference-distribute-myself.trycloudflare.com',
+  BASE_URL: 'https://contained-beverage-concerned-rep.trycloudflare.com',
   TIMEOUT_MS: 10000,
 };

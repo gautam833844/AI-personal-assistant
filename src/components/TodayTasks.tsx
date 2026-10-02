@@ -1,53 +1,48 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
+import { Task } from '../types/task';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
 
-interface Task {
-  id: string;
-  text: string;
-  completed: boolean;
+interface TodayTasksProps {
+  tasks?: Task[];
+  onToggleTask?: (id: string) => void;
 }
 
-const INITIAL_TASKS: Task[] = [
-  { id: '1', text: 'Complete internship work', completed: false },
-  { id: '2', text: 'Prepare Atlas PPT', completed: false },
-  { id: '3', text: 'Study for NLP quiz', completed: false },
-];
-
-export const TodayTasks: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-
-  const toggleTask = (id: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
-  };
+export const TodayTasks: React.FC<TodayTasksProps> = ({
+  tasks = [],
+  onToggleTask,
+}) => {
+  const todayTasks = tasks.filter((t) => t.dateCategory === 'today');
 
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>TODAY'S TASKS</Text>
-      <View style={styles.tasksList}>
-        {tasks.map((task) => (
-          <TouchableOpacity
-            key={task.id}
-            activeOpacity={0.7}
-            style={styles.taskItem}
-            onPress={() => toggleTask(task.id)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: task.completed }}
-          >
-            <View style={[styles.checkbox, task.completed && styles.checkboxChecked]}>
-              {task.completed && <Check size={14} color="#ffffff" strokeWidth={3} />}
-            </View>
-            <Text style={[styles.taskText, task.completed && styles.taskTextCompleted]}>
-              {task.text}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {todayTasks.length > 0 ? (
+        <View style={styles.tasksList}>
+          {todayTasks.map((task) => (
+            <TouchableOpacity
+              key={task.id}
+              activeOpacity={0.7}
+              style={styles.taskItem}
+              onPress={() => onToggleTask?.(task.id)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: task.completed }}
+            >
+              <View style={[styles.checkbox, task.completed && styles.checkboxChecked]}>
+                {task.completed && <Check size={14} color="#ffffff" strokeWidth={3} />}
+              </View>
+              <Text style={[styles.taskText, task.completed && styles.taskTextCompleted]}>
+                {task.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No tasks for today</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -104,5 +99,18 @@ const styles = StyleSheet.create({
   taskTextCompleted: {
     color: COLORS.textTertiary,
     textDecorationLine: 'line-through',
+  },
+  emptyCard: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 13.5,
+    color: COLORS.textTertiary,
   },
 });

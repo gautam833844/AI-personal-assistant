@@ -7,18 +7,20 @@ interface NextEventProps {
   title?: string;
   time?: string;
   location?: string;
+  badgeText?: string;
 }
 
 export const NextEventCard: React.FC<NextEventProps> = ({
-  title = 'Machine Learning',
-  time = '10:00 AM',
-  location = 'Room 204',
+  title = 'No Upcoming Events',
+  time = 'All clear',
+  location,
+  badgeText = 'NEXT',
 }) => {
   return (
     <View style={styles.card}>
       <View style={styles.badgeRow}>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>NEXT</Text>
+          <Text style={styles.badgeText}>{badgeText}</Text>
         </View>
       </View>
       <Text style={styles.eventTitle}>{title}</Text>
@@ -27,10 +29,12 @@ export const NextEventCard: React.FC<NextEventProps> = ({
           <Clock size={15} color={COLORS.textSecondary} />
           <Text style={styles.detailText}>{time}</Text>
         </View>
-        <View style={styles.detailItem}>
-          <MapPin size={15} color={COLORS.textSecondary} />
-          <Text style={styles.detailText}>{location}</Text>
-        </View>
+        {location ? (
+          <View style={styles.detailItem}>
+            <MapPin size={15} color={COLORS.textSecondary} />
+            <Text style={styles.detailText}>{location}</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );

@@ -5,10 +5,12 @@ import { COLORS, RADIUS, SPACING } from '../constants/theme';
 
 interface FreeTimeProps {
   timeRange?: string;
+  subText?: string;
 }
 
 export const FreeTimeCard: React.FC<FreeTimeProps> = ({
-  timeRange = '4:30 PM – 6:30 PM',
+  timeRange = 'Free all day',
+  subText = 'Available window',
 }) => {
   return (
     <View style={styles.container}>
@@ -20,7 +22,7 @@ export const FreeTimeCard: React.FC<FreeTimeProps> = ({
           </View>
           <View style={styles.textWrap}>
             <Text style={styles.timeRangeText}>{timeRange}</Text>
-            <Text style={styles.subText}>Available window</Text>
+            <Text style={styles.subText}>{subText}</Text>
           </View>
         </View>
       </View>

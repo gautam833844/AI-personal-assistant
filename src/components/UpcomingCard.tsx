@@ -9,8 +9,8 @@ interface UpcomingProps {
 }
 
 export const UpcomingCard: React.FC<UpcomingProps> = ({
-  title = 'NLP Quiz',
-  timeInfo = 'Tomorrow • 10:00 AM',
+  title = 'No upcoming quizzes',
+  timeInfo = 'All clear for now',
 }) => {
   return (
     <View style={styles.container}>

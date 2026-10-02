@@ -440,6 +440,8 @@ export default function App() {
         return (
           <HomeScreen
             userName={profile.preferredName || profile.name || 'Gautam'}
+            tasks={tasks}
+            onToggleTask={handleToggleTask}
             onOpenAssistant={handleOpenAssistant}
           />
         );
